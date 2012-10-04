@@ -54,6 +54,8 @@ public class MonitorPlayerListener extends HawkEyeListener {
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		Player player = event.getPlayer();
 		Location loc  = player.getLocation();
+                //Check for inventory close
+		HawkEye.containerManager.checkInventoryClose(event.getPlayer());
 		DataManager.addEntry(new DataEntry(player, DataType.JOIN, loc, Config.LogIpAddresses?player.getAddress().getAddress().getHostAddress().toString():""));
 	}
 
@@ -104,6 +106,7 @@ public class MonitorPlayerListener extends HawkEyeListener {
 				case FURNACE:
 				case DISPENSER:
 				case CHEST:
+                                case BREWING_STAND:
 				case ENDER_CHEST:
 					if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
 						//Call container manager for inventory open

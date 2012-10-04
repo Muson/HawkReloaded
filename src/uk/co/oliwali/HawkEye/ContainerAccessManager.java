@@ -30,7 +30,7 @@ public class ContainerAccessManager {
 		//Get access from list
 		ContainerAccess access = null;
 		for (ContainerAccess acc : accessList) {
-			if (acc.player == player) access = acc;
+			if (acc.playerName.compareTo(player.getName())==0) access = acc;
 		}
 
 		//If no access, return
@@ -61,12 +61,12 @@ public class ContainerAccessManager {
 	 */
 	public class ContainerAccess {
 		public InventoryHolder container;
-		public Player player;
+		public String playerName;
 		public HashMap<String,Integer> beforeInv;
 		public Location loc;
 		public ContainerAccess(InventoryHolder container, Player player, HashMap<String,Integer> beforeInv, Location loc) {
 			this.container = container;
-			this.player = player;
+			this.playerName = player.getName();
 			this.beforeInv = beforeInv;
 			this.loc = loc;
 		}
