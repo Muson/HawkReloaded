@@ -105,7 +105,9 @@ public class MonitorPlayerListener extends HawkEyeListener {
 				case FURNACE:
 				case DISPENSER:
 				case CHEST:
-                                case BREWING_STAND:
+				case ANVIL:
+				case BEACON:
+				case BREWING_STAND:
 				case ENDER_CHEST:
 					if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
 						//Call container manager for inventory open
@@ -152,11 +154,11 @@ public class MonitorPlayerListener extends HawkEyeListener {
 		Player player = event.getPlayer();
 		ItemStack stack = event.getItemDrop().getItemStack();
 		String data = null;
-		if (stack.getData() != null)
+		if (stack.getDurability() != 0)
 			data = stack.getAmount() + "x " + stack.getTypeId() + ":" + stack.getData().getData();
 		else
 			data = stack.getAmount() + "x " + stack.getTypeId();
-		DataManager.addEntry(new DataEntry(player, DataType.ITEM_DROP, player.getLocation(), data));
+		DataManager.addEntry(new DataEntry(player, DataType.ITEM_DROP, player.getLocation().getBlock().getLocation(), data));
 	}
 
 	@HawkEvent(dataType = DataType.ITEM_PICKUP)
@@ -164,10 +166,10 @@ public class MonitorPlayerListener extends HawkEyeListener {
 		Player player = event.getPlayer();
 		ItemStack stack = event.getItem().getItemStack();
 		String data = null;
-		if (stack.getData() != null)
+		if (stack.getDurability() != 0)
 			data = stack.getAmount() + "x " + stack.getTypeId() + ":" + stack.getData().getData();
 		else
 			data = stack.getAmount() + "x " + stack.getTypeId();
-		DataManager.addEntry(new DataEntry(player, DataType.ITEM_PICKUP, player.getLocation(), data));
+		DataManager.addEntry(new DataEntry(player, DataType.ITEM_PICKUP, player.getLocation().getBlock().getLocation(), data));
 	}
 }
