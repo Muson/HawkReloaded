@@ -94,7 +94,7 @@ public class HawkEye extends JavaPlugin {
 
 		//Load config and permissions
         config = new Config(this);
-        new Permission(this);
+        new Permission();
 
         setupUpdater();
 
@@ -102,7 +102,7 @@ public class HawkEye extends JavaPlugin {
 
         //Initiate database connection
         try {
-			new DataManager(this);
+    	    getServer().getScheduler().scheduleAsyncRepeatingTask(this, new DataManager(this), Config.LogDelay * 20, Config.LogDelay * 20);
 		} catch (Exception e) {
 			Util.severe("Error initiating HawkEye database connection, disabling plugin");
 			pm.disablePlugin(this);
@@ -117,7 +117,6 @@ public class HawkEye extends JavaPlugin {
 	    registerListeners(pm);
 
 	    registerCommands();
-
         Util.info("Version " + version + " enabled!");
 
 	}

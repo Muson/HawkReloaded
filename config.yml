@@ -39,13 +39,14 @@ log:
     spawnmob-egg: false
     herochat: false
     entity-modify: false
+    block-inhabit: false
 general:
     max-lines: 0
     log-item-drops-on-death: false
     cleanse-period: 20m
     cleanse-age: 0
     delete-data-on-rollback: true
-    log-ip-addresses: true
+    log-ip-addresses: false
     debug: false
     debug-level: low
     max-radius: 0
@@ -55,6 +56,7 @@ general:
     default-tool-command: ''
     check-for-updates: true
     op-permissions: false
+    log-delay: 2
 mysql:
     hawkeye-table: hawkeye
     port: 3306
@@ -68,7 +70,6 @@ mysql:
 ignore-worlds:
 - thisworldisignored
 - soisthisone
-version: 1.0.6.3
 command-filter:
 - /login
 - /restartsrv

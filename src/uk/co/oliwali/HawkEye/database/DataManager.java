@@ -23,11 +23,11 @@ import uk.co.oliwali.HawkEye.util.Util;
  * All queries except searching goes through this class.
  * @author oliverw92
  */
+
 public class DataManager extends TimerTask {
 
 	private static final LinkedBlockingQueue<DataEntry> queue = new LinkedBlockingQueue<DataEntry>();
 	private static ConnectionManager connections;
-	public static Timer loggingTimer = null;
 	public static Timer cleanseTimer = null;
 	public static final HashMap<String, Integer> dbPlayers = new HashMap<String, Integer>();
 	public static final HashMap<String, Integer> dbWorlds = new HashMap<String, Integer>();
@@ -42,7 +42,6 @@ public class DataManager extends TimerTask {
 
 		connections = new ConnectionManager(Config.DbUrl, Config.DbUser, Config.DbPassword);
 		getConnection().close();
-
 		//Check tables and update player/world lists
 		if (!checkTables())
 			throw new Exception();
@@ -56,10 +55,6 @@ public class DataManager extends TimerTask {
 			Util.severe(e.getMessage());
 			Util.severe("Unable to start cleansing utility - check your cleanse age");
 		}
-
-		//Start logging timer
-		loggingTimer = new Timer();
-		loggingTimer.scheduleAtFixedRate(this, 2000, 2000);
 	}
 
 	/**
@@ -68,7 +63,6 @@ public class DataManager extends TimerTask {
 	public static void close() {
 		connections.close();
 		if (cleanseTimer != null) cleanseTimer.cancel();
-		if (loggingTimer != null) loggingTimer.cancel();
 	}
 
 	/**
@@ -80,7 +74,7 @@ public class DataManager extends TimerTask {
 	public static void addEntry(DataEntry entry) {
 
 		if (!Config.isLogged(entry.getType())) return;
-		
+
 		if (Config.IgnoreWorlds.contains(entry.getWorld())) return;
 
 		queue.add(entry);
@@ -186,7 +180,8 @@ public class DataManager extends TimerTask {
 		try {
 			Util.debug("Attempting to add player '" + name + "' to database");
 			conn = getConnection();
-			conn.createStatement().execute("INSERT IGNORE INTO `" + Config.DbPlayerTable + "` (player) VALUES ('" + name + "');");
+			//Instead of ignoring a dup'd key, we update the entry. Ignore is a very bad idea!
+			conn.createStatement().execute("INSERT INTO `" + Config.DbPlayerTable + "` (player) VALUES ('" + name + "') ON DUPLICATE KEY UPDATE player='" + name + "';");
 		} catch (SQLException ex) {
 			Util.severe("Unable to add player to database: " + ex);
 			return false;
@@ -301,6 +296,8 @@ public class DataManager extends TimerTask {
 	public void run() {
 		if (queue.isEmpty())
 			return;
+		if (queue.size() >= 2000)
+			Util.info("The queue is almost overloaded! Queue: " + queue.size());
 		JDCConnection conn = getConnection();
 		PreparedStatement stmnt = null;
 		try {
