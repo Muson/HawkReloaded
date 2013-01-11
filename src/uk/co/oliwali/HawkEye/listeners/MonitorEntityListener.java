@@ -5,12 +5,19 @@ import java.util.Arrays;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.entity.Creeper;
+import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.FallingBlock;
+import org.bukkit.entity.Fireball;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Painting;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Silverfish;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Wither;
+import org.bukkit.entity.WitherSkull;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -18,6 +25,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
+import org.bukkit.event.hanging.HangingBreakEvent.RemoveCause;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -46,6 +54,7 @@ public class MonitorEntityListener extends HawkEyeListener {
 
 	/**
 	 * Uses the lastAttacker field in the players {@link PlayerSession} to log the death and cause
+	 * We may have to redo this, newer API would work better for this
 	 */
 	@HawkEvent(dataType = {DataType.PVP_DEATH, DataType.MOB_DEATH, DataType.OTHER_DEATH, DataType.ENTITY_KILL})
 	public void onEntityDeath(EntityDeathEvent event) {
@@ -104,50 +113,59 @@ public class MonitorEntityListener extends HawkEyeListener {
 
 	@HawkEvent(dataType = DataType.EXPLOSION)
 	public void onEntityExplode(EntityExplodeEvent event) {
-		String entity = event.getEntityType().getName();
+		Entity e = event.getEntity();
+		String name = "Environment";
+		if (e instanceof TNTPrimed) name = "TNT";
+		else if (e instanceof Creeper) name = "Creeper";
+		else if (e instanceof Fireball) name = "Ghast";
+		else if (e instanceof EnderDragon) name = "EnderDragon";
+		else if ((e instanceof Wither) || (e instanceof WitherSkull)) name = "Wither";
 		for (Block b : event.blockList().toArray(new Block[0]))
-			DataManager.addEntry(new BlockEntry(entity, DataType.EXPLOSION, b));
+			DataManager.addEntry(new BlockEntry(name, DataType.EXPLOSION, b));
 	}
 
 	@HawkEvent(dataType = DataType.ITEM_BREAK) 
 	public void onPaintingBreak(HangingBreakEvent event) {
-		HangingBreakByEntityEvent e = (HangingBreakByEntityEvent)event;
+		if (event.getCause().equals(RemoveCause.ENTITY)) return;
 		Entity en = event.getEntity();
 		String type = "Unknown";
-		if (en instanceof Painting) {
-			type = "Painting";
-		} else if (en instanceof ItemFrame) {
-			type = "Itemframe";
-		}
-		if (e.getRemover() instanceof Player)
-			DataManager.addEntry(new DataEntry((Player)e.getRemover(), DataType.ITEM_BREAK, en.getLocation().getBlock().getLocation(), type));
+		if (en instanceof Painting) type = "Painting";
+		else if (en instanceof ItemFrame) type = "Itemframe";
+		DataManager.addEntry(new DataEntry(event.getCause().name(), DataType.ITEM_BREAK, en.getLocation().getBlock().getLocation(), type));
+	}
+
+	@HawkEvent(dataType = DataType.ITEM_BREAK) 
+	public void onPaintingBreak(HangingBreakByEntityEvent event) {
+		Entity en = event.getEntity();
+		String type = "Unknown";
+		if (en instanceof Painting) type = "Painting";
+		else if (en instanceof ItemFrame) type = "Itemframe";
+		DataManager.addEntry(new DataEntry((Player)event.getRemover(), DataType.ITEM_BREAK, en.getLocation().getBlock().getLocation(), type));
 	}
 
 	@HawkEvent(dataType = DataType.ENTITY_MODIFY) 
 	public void onEntityModifyBlock(EntityChangeBlockEvent event) {
+		String type = "Environment";
 		Entity en = event.getEntity();
-		String entity = event.getEntityType().getName();
 		if (en instanceof Silverfish) return;
-		DataManager.addEntry(new BlockEntry(entity, DataType.ENTITY_MODIFY, event.getBlock()));
+		else if (en instanceof Wither) type = "Wither";
+		else if (en instanceof FallingBlock) type = "FallingBlock";
+		DataManager.addEntry(new BlockEntry(type, DataType.ENTITY_MODIFY, event.getBlock()));
 	}
 
 	@HawkEvent(dataType = DataType.BLOCK_INHABIT)
 	public void onEntityBlockChange(EntityChangeBlockEvent event) {
 		Entity en = event.getEntity();
-		String entity = event.getEntityType().getName();
 		if (!(en instanceof Silverfish)) return;
-		DataManager.addEntry(new BlockEntry(entity, DataType.BLOCK_INHABIT, event.getBlock()));
+		DataManager.addEntry(new BlockEntry("SilverFish", DataType.BLOCK_INHABIT, event.getBlock()));
 	}
-	
+
 	@HawkEvent(dataType = DataType.ITEM_PLACE)
 	public void onHangingPlace(HangingPlaceEvent event) {
 		Entity e = event.getEntity();
 		String type = "Unknown";
-		if (e instanceof Painting) {
-			type = "Painting";
-		} else if (e instanceof ItemFrame) {
-			type = "Itemframe";
-		}
+		if (e instanceof Painting) type = "Painting";
+		else if (e instanceof ItemFrame) type = "Itemframe";
 		DataManager.addEntry(new DataEntry(event.getPlayer(), DataType.ITEM_PLACE, e.getLocation().getBlock().getLocation(), type));
 	}
 

@@ -1,5 +1,6 @@
 package uk.co.oliwali.HawkEye;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +32,7 @@ import uk.co.oliwali.HawkEye.listeners.MonitorBlockListener;
 import uk.co.oliwali.HawkEye.listeners.MonitorEntityListener;
 import uk.co.oliwali.HawkEye.listeners.MonitorHeroChatListener;
 import uk.co.oliwali.HawkEye.listeners.MonitorPlayerListener;
+import uk.co.oliwali.HawkEye.listeners.MonitorWorldEditListener;
 import uk.co.oliwali.HawkEye.listeners.MonitorWorldListener;
 import uk.co.oliwali.HawkEye.listeners.ToolListener;
 import uk.co.oliwali.HawkEye.util.Config;
@@ -51,6 +53,7 @@ public class HawkEye extends JavaPlugin {
 	public MonitorEntityListener monitorEntityListener = new MonitorEntityListener(this);
 	public MonitorPlayerListener monitorPlayerListener = new MonitorPlayerListener(this);
 	public MonitorWorldListener monitorWorldListener = new MonitorWorldListener(this);
+	public MonitorWorldEditListener monitorWorldEditListener = new MonitorWorldEditListener();
 	private static boolean update = false;
 	public ToolListener toolListener = new ToolListener();
 	public MonitorHeroChatListener monitorHeroChatListener = new MonitorHeroChatListener(this);
@@ -73,36 +76,44 @@ public class HawkEye extends JavaPlugin {
 	 */
 	@Override
 	public void onEnable() {
-		PluginManager pm = getServer().getPluginManager();
-		try
-		{
-			Class.forName("org.bukkit.event.hanging.HangingPlaceEvent");
+		//Setup metrics
+		try {
+			Metrics metrics = new Metrics(this);
+			metrics.start();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		catch (ClassNotFoundException ex)
-		{
+
+		PluginManager pm = getServer().getPluginManager();
+
+		//Check bukkit dependencies
+		try {
+			Class.forName("org.bukkit.event.hanging.HangingPlaceEvent");
+		} catch (ClassNotFoundException ex) {
 			Util.info("HawkEye requires CraftBukkit 1.4+ to run properly!");
 			pm.disablePlugin(this);
 			return;
 		}
+
 		//Set up config and permissions
-        instance = this;
+		instance = this;
 		server = getServer();
 		name = this.getDescription().getName();
-        version = this.getDescription().getVersion();
+		version = this.getDescription().getVersion();
 
 		Util.info("Starting HawkEye " + version + " initiation process...");
 
 		//Load config and permissions
-        config = new Config(this);
-        new Permission();
+		config = new Config(this);
+		new Permission();
 
-        setupUpdater();
+		setupUpdater();
 
-        new SessionManager();
+		new SessionManager();
 
-        //Initiate database connection
-        try {
-    	    getServer().getScheduler().scheduleAsyncRepeatingTask(this, new DataManager(this), Config.LogDelay * 20, Config.LogDelay * 20);
+		//Initiate database connection
+		try {
+			getServer().getScheduler().runTaskTimerAsynchronously(this, new DataManager(this), Config.LogDelay * 20, Config.LogDelay * 20);
 		} catch (Exception e) {
 			Util.severe("Error initiating HawkEye database connection, disabling plugin");
 			pm.disablePlugin(this);
@@ -110,14 +121,13 @@ public class HawkEye extends JavaPlugin {
 		}
 
 		checkDependencies(pm);
-		HeroChatPlug(pm);
 
 		containerManager = new ContainerAccessManager();
 
-	    registerListeners(pm);
+		registerListeners(pm);
 
-	    registerCommands();
-        Util.info("Version " + version + " enabled!");
+		registerCommands();
+		Util.info("Version " + version + " enabled!");
 
 	}
 
@@ -126,29 +136,10 @@ public class HawkEye extends JavaPlugin {
 	 * @param pm PluginManager
 	 */
 	private void checkDependencies(PluginManager pm) {
-
-        //Check if WorldEdit is loaded
-        Plugin we = pm.getPlugin("WorldEdit");
-        if (we != null) {
-        	worldEdit = (WorldEditPlugin)we;
-        	Util.info("WorldEdit found, selection rollbacks enabled");
-        }
-        else Util.info("WARNING! WorldEdit not found, WorldEdit selection rollbacks disabled until WorldEdit is available");
-
-	}
-	/** 
-	 * Gonna add some more onto this later
-	 * @param pm PluginManager
-	 */
-	private void HeroChatPlug(PluginManager pm) {
-
-        //A bit better now
-        Plugin hc = pm.getPlugin("Herochat");
-        if (hc != null) {
-        	herochat = (Herochat)hc;
-        }
-        else Util.info("HeroChat not found, Disabling chatchannel logging!");
-
+		Plugin we = pm.getPlugin("WorldEdit");
+		Plugin hc = pm.getPlugin("Herochat");
+		if (we != null) worldEdit = (WorldEditPlugin)we;
+		if (hc != null) herochat = (Herochat)hc;
 	}
 
 	/**
@@ -157,15 +148,14 @@ public class HawkEye extends JavaPlugin {
 	 */
 	private void registerListeners(PluginManager pm) {
 
+		//Register events
 		monitorBlockListener.registerEvents();
 		monitorPlayerListener.registerEvents();
 		monitorEntityListener.registerEvents();
 		monitorWorldListener.registerEvents();
 		pm.registerEvents(toolListener, this);
-		if (herochat != null) {
-		monitorHeroChatListener.registerEvents();
-		}
-
+		if (herochat != null) monitorHeroChatListener.registerEvents();
+		if ((worldEdit != null) && (Config.SuperPick)) pm.registerEvents(monitorWorldEditListener, this); 
 	}
 
 	/**
@@ -173,23 +163,22 @@ public class HawkEye extends JavaPlugin {
 	 */
 	private void registerCommands() {
 
-        //Add commands
-        commands.add(new HelpCommand());
-        commands.add(new ToolBindCommand());
-        commands.add(new ToolResetCommand());
-        commands.add(new ToolCommand());
-        commands.add(new SearchCommand());
-        commands.add(new PageCommand());
-        commands.add(new TptoCommand());
-        commands.add(new HereCommand());
-        commands.add(new PreviewApplyCommand());
-        commands.add(new PreviewCancelCommand());
-        commands.add(new PreviewCommand());
-        commands.add(new RollbackCommand());
-        // if (worldEdit != null) commands.add(new WorldEditRollbackCommand());
-        commands.add(new UndoCommand());
-        commands.add(new RebuildCommand());
-        commands.add(new DeleteCommand());
+		//Add commands
+		commands.add(new HelpCommand());
+		commands.add(new ToolBindCommand());
+		commands.add(new ToolResetCommand());
+		commands.add(new ToolCommand());
+		commands.add(new SearchCommand());
+		commands.add(new PageCommand());
+		commands.add(new TptoCommand());
+		commands.add(new HereCommand());
+		commands.add(new PreviewApplyCommand());
+		commands.add(new PreviewCancelCommand());
+		commands.add(new PreviewCommand());
+		commands.add(new RollbackCommand());
+		commands.add(new UndoCommand());
+		commands.add(new RebuildCommand());
+		commands.add(new DeleteCommand());
 
 	}
 
@@ -216,14 +205,12 @@ public class HawkEye extends JavaPlugin {
 			return true;
 		}
 		return false;
-
 	}
+
 	private void setupUpdater() {
 		if (getConfig().getBoolean("general.check-for-updates")) {
+			Util.info("Checking for a new update...");
 
-			{
-				Util.info("Checking for a new update...");
-			}
 			Updater updater = new Updater(this, "hawkeye-reload", this.getFile(), Updater.UpdateType.DEFAULT, false);
 			update = updater.getResult() == Updater.UpdateResult.UPDATE_AVAILABLE; // Determine if there is an update ready for us
 			name = updater.getLatestVersionString();
